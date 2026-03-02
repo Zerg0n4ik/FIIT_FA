@@ -17,15 +17,62 @@ public abstract class BinarySearchTreeBase<TKey, TValue, TNode>(IComparer<TKey>?
 
     public ICollection<TKey> Keys => throw new NotImplementedException();
     public ICollection<TValue> Values => throw new NotImplementedException();
-    
-    
+
+
     public virtual void Add(TKey key, TValue value)
     {
-        throw new NotImplementedException(
-            "Implement standard BST add logic using <CreateNode(key, value)> and OnNodeAdded(newNode)");
+
+        TNode? existing = FindNode(key);
+        if (existing != null)
+        {
+            existing.Value = value;
+            return;
+        }
+
+
+        TNode newNode = CreateNode(key, value);
+
+        if (Root == null)
+        {
+            Root = newNode;
+        }
+        else
+        {
+            TNode current = Root;
+            TNode parent = null;
+
+            while (current != null)
+            {
+                parent = current;
+
+                int cmpRes1 = comparer.Compare(key, current.Key);
+
+                if (cmpRes1 < 0)
+                {
+                    current = current.Left;
+                }
+
+                else if (cmpRes1 > 0)
+                {
+                    current = current.Right;
+                }
+            }       
+            int cmpRes2 = comparer.Compare(key, parent.Key);
+            if (cmpRes2 < 0)
+            {
+                parent.Left = newNode;
+            }
+
+            else if (cmpRes2 > 0)
+            {
+                parent.Right = newNode;
+            }
+            newNode.Parent = parent;
+        }
+        this.Count++;
+        OnNodeAdded(newNode);
     }
 
-    
     public virtual bool Remove(TKey key)
     {
         TNode? node = FindNode(key);
@@ -39,7 +86,56 @@ public abstract class BinarySearchTreeBase<TKey, TValue, TNode>(IComparer<TKey>?
     
     protected virtual void RemoveNode(TNode node)
     {
-        throw new NotImplementedException("Implement standard BST delete logic using Transplant helper");
+        if (node.Left == null && node.Right == null)
+        {
+            Transplant(node, null);
+            OnNodeRemoved(node.Parent, null);
+        }
+        else if (node.Left == null && node.Right != null)
+        {
+            Transplant(node, node.Right);
+            OnNodeRemoved(node.Parent, node.Right);
+        }
+        else if (node.Left != null && node.Right == null)
+        {
+            Transplant(node, node.Left);
+            OnNodeRemoved(node.Parent, node.Left);
+        }
+        else
+        {
+            TNode current = node.Right;
+            while (current.Left != null) 
+            {
+                current = current.Left;
+            }
+            if (current.Parent != node)
+            {
+                current.Parent.Left = current.Right;
+                if (current.Right != null)
+                    current.Right.Parent = current.Parent;
+
+                current.Right = node.Right;
+                node.Right.Parent = current;
+            }
+            current.Left = node.Left;
+            node.Left.Parent = current;
+
+            if (node.Parent == null)
+            {
+                current.Parent = null;
+            }
+
+            else if (node.IsLeftChild) {
+                node.Parent.Left = current;
+                current.Parent = node.Parent;
+            }
+            else
+            {
+                node.Parent.Right = current;
+                current.Parent = node.Parent;
+            }
+            OnNodeRemoved(current.Parent, current);
+        }
     }
 
     public virtual bool ContainsKey(TKey key) => FindNode(key) != null;
