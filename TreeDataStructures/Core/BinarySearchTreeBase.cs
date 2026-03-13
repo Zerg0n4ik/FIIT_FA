@@ -317,9 +317,36 @@ public abstract class BinarySearchTreeBase<TKey, TValue, TNode>(IComparer<TKey>?
         IEnumerable<TreeEntry<TKey, TValue>>,
         IEnumerator<TreeEntry<TKey, TValue>>
     {
-        // probably add something here
+        private readonly TNode? _root;
+        private TNode? _current;
+        private Stack<TNode> _stack = new Stack<TNode>();
         private readonly TraversalStrategy _strategy; // or make it template parameter?
         
+        // Конструктор
+        public TreeIterator(TNode Root, TraversalStrategy strategy)
+        {
+            _root = Root;
+            _strategy = strategy;
+        }
+        
+        private void PushLeftBranch(TNode? node)
+        {
+            while (node != null)
+            {
+                _stack.Push(node);
+                node = node.Left;
+            }
+        }
+
+        private void PushRightBranch(TNode? node)
+        {
+            while (node != null)
+            {
+                _stack.Push(node);
+                node = node.Right;
+            }
+        }
+
         public IEnumerator<TreeEntry<TKey, TValue>> GetEnumerator() => this;
         IEnumerator IEnumerable.GetEnumerator() => this;
         
@@ -329,22 +356,59 @@ public abstract class BinarySearchTreeBase<TKey, TValue, TNode>(IComparer<TKey>?
         
         public bool MoveNext()
         {
+            // Прямой и Обртаный прямой
             if (_strategy == TraversalStrategy.InOrder)
             {
-                throw new NotImplementedException();
+                if (_stack.Count == 0 && _current == null)
+                {
+                    PushLeftBranch(_root);
+                }
+                if (_stack.Count == 0)
+                {
+                    return false;
+                }
+
+                _current = _stack.Pop();
+
+                if (_current.Right != null)
+                {
+                    PushLeftBranch(_current.Right);
+                }
+
+                return true;
+            }
+            else if (_strategy == TraversalStrategy.InOrderReverse)
+            {
+                if (_stack.Count == 0 && _current == null)
+                {
+                    PushRightBranch(_root);
+                }
+                if (_stack.Count == 0)
+                {
+                    return false;
+                }
+
+                _current = _stack.Pop();
+
+                if (_current.Left != null)
+                {
+                    PushRightBranch(_current.Left);
+                }
+                return true;
             }
             throw new NotImplementedException("Strategy not implemented");
         }
         
         public void Reset()
         {
-            throw new NotImplementedException();
+
         }
 
         
         public void Dispose()
         {
-            // TODO release managed resources here
+            _stack.Clear();
+            _current = null;
         }
     }
     
