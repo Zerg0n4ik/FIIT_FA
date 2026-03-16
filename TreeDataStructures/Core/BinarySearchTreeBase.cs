@@ -15,8 +15,27 @@ public abstract class BinarySearchTreeBase<TKey, TValue, TNode>(IComparer<TKey>?
     
     public bool IsReadOnly => false;
 
-    public ICollection<TKey> Keys => throw new NotImplementedException();
-    public ICollection<TValue> Values => throw new NotImplementedException();
+    public ICollection<TKey> Keys => InOrder().Select(e => e.Key).ToArray();
+    public ICollection<TValue> Values => InOrder().Select(e => e.Value).ToArray();
+
+    private class KeyValuePairIterator : IEnumerator<KeyValuePair<TKey, TValue>>
+    {
+        private IEnumerator<TreeEntry<TKey, TValue>> _inner;
+
+        public KeyValuePairIterator(IEnumerator<TreeEntry<TKey, TValue>> inner)
+        {
+            _inner = inner;
+        }
+
+        public KeyValuePair<TKey, TValue> Current =>
+            new KeyValuePair<TKey, TValue>(_inner.Current.Key, _inner.Current.Value);
+
+        object IEnumerator.Current => Current;
+
+        public bool MoveNext() => _inner.MoveNext();
+        public void Reset() => _inner.Reset();
+        public void Dispose() => _inner.Dispose();
+    }
 
 
     public virtual void Add(TKey key, TValue value)
@@ -328,6 +347,14 @@ public abstract class BinarySearchTreeBase<TKey, TValue, TNode>(IComparer<TKey>?
         {
             _root = Root;
             _strategy = strategy;
+            if (strategy == TraversalStrategy.PostOrder)
+            {
+                _postOrderStack = new Stack<TNode>();
+            }
+            else if (strategy == TraversalStrategy.PostOrderReverse)
+            {
+                _postOrderStack = new Stack<TNode>();
+            }
         }
         
         private void PushLeftBranch(TNode? node)
@@ -571,12 +598,12 @@ public abstract class BinarySearchTreeBase<TKey, TValue, TNode>(IComparer<TKey>?
     
     
     private enum TraversalStrategy { InOrder, PreOrder, PostOrder, InOrderReverse, PreOrderReverse, PostOrderReverse }
-    
+
     public IEnumerator<KeyValuePair<TKey, TValue>> GetEnumerator()
     {
-        throw new NotImplementedException();
+        return new KeyValuePairIterator(InOrder().GetEnumerator());
     }
-    
+
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
 
