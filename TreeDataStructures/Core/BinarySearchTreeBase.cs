@@ -377,30 +377,6 @@ public abstract class BinarySearchTreeBase<TKey, TValue, TNode>(IComparer<TKey>?
             }
         }
 
-        private void FillPostOrderStack()
-        {
-            Stack<TNode> tempStack = new Stack<TNode>();
-            tempStack.Push(_root);
-
-            _postOrderStack = new Stack<TNode>();
-
-            while (tempStack.Count > 0)
-            {
-                TNode current = tempStack.Pop();
-
-                _postOrderStack.Push(current);
-
-                if (current.Right != null)
-                {
-                    tempStack.Push(current.Right);
-                }
-                if (current.Left != null)
-                {
-                    tempStack.Push(current.Left);
-                }
-            }
-        }
-
         private void FillPostOrderStackReverse()
         {
             Stack<TNode> tempStack = new Stack<TNode>();
@@ -413,6 +389,30 @@ public abstract class BinarySearchTreeBase<TKey, TValue, TNode>(IComparer<TKey>?
                 TNode current = tempStack.Pop();
 
                 _postOrderReverseStack.Push(current);
+
+                if (current.Right != null)
+                {
+                    tempStack.Push(current.Right);
+                }
+                if (current.Left != null)
+                {
+                    tempStack.Push(current.Left);
+                }
+            }
+        }
+
+        private void FillPostOrderStack()
+        {
+            Stack<TNode> tempStack = new Stack<TNode>();
+            tempStack.Push(_root);
+
+            _postOrderStack = new Stack<TNode>();
+
+            while (tempStack.Count > 0)
+            {
+                TNode current = tempStack.Pop();
+
+                _postOrderStack.Push(current);
 
                 if (current.Left != null)
                 {
@@ -556,7 +556,7 @@ public abstract class BinarySearchTreeBase<TKey, TValue, TNode>(IComparer<TKey>?
                 }
                 if (_postOrderStack.Count == 0) 
                 { 
-                return false;
+                    return false;
                 }
 
                 _current = _postOrderStack.Pop();
