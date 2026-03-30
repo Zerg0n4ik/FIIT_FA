@@ -265,7 +265,7 @@ public abstract class BinarySearchTreeBase<TKey, TValue, TNode>(IComparer<TKey>?
         {
             y.Parent.Left = x;
         }
-        x.Left = y;
+        x.Right = y;
         y.Parent = x;
     }
     
@@ -349,14 +349,10 @@ public abstract class BinarySearchTreeBase<TKey, TValue, TNode>(IComparer<TKey>?
         {
             _root = Root;
             _strategy = strategy;
-            if (strategy == TraversalStrategy.PostOrder)
-            {
-                _postOrderStack = new Stack<TNode>();
-            }
-            else if (strategy == TraversalStrategy.PostOrderReverse)
-            {
-                _postOrderReverseStack = new Stack<TNode>();
-            }
+            _stack = new Stack<TNode>();
+            _current = null;
+            _postOrderStack = null;
+            _postOrderReverseStack = null;
         }
         
         private void PushLeftBranch(TNode? node)
