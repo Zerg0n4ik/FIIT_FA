@@ -743,6 +743,9 @@ public sealed class BetterBigInteger : IBigInteger
         if (shift < 0)
             return a >> -shift;
 
+        if (a.IsNegative)
+            return -((-a) << shift);
+
         var (words, _) = ToTwosComplement(a);
 
         int wordShift = shift / 32;
@@ -817,7 +820,7 @@ public sealed class BetterBigInteger : IBigInteger
                 }
                 else if (sign)
                 {
-                    value |= 0xFFFFFFFF00000000UL >> (64 - bitShift);
+                    value |= (ulong)0xFFFFFFFF << (32 - bitShift);
                 }
             }
 
@@ -878,7 +881,7 @@ public sealed class BetterBigInteger : IBigInteger
         var digits = new List<uint>(GetDigits().ToArray());
         var chars = new List<char>();
 
-        while (digits.Count != 0 && digits[0] != 0)
+        while (!(digits.Count == 1 && digits[0] == 0) && digits.Count != 0) 
         {
             uint remainder = DivideByRadix(digits, (uint)radix);
             chars.Add(FromDigitToChar(remainder));
