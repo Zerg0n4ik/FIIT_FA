@@ -30,7 +30,7 @@ internal class KaratsubaMultiplier : IMultiplier
 
     private uint[] KaratsubaMultiply(ReadOnlySpan<uint> x, ReadOnlySpan<uint> y)
     {
-        y = TrimLeadingZeros(y);
+        y = DeleteZeros(y);
 
         int n = Math.Max(x.Length, y.Length);
 
@@ -56,7 +56,7 @@ internal class KaratsubaMultiplier : IMultiplier
         z1 = Subtract(z1, z0);
         z1 = Subtract(z1, z2);
 
-        return Combine(z0, z1, z2, m);
+        return LastSum(z0, z1, z2, m);
     }
 
     private static uint[] Add(ReadOnlySpan<uint> a, ReadOnlySpan<uint> b)
@@ -79,6 +79,25 @@ internal class KaratsubaMultiplier : IMultiplier
         return result;
     }
 
+    private static void AddWithShift(uint[] dest, uint[] source, int shift)
+    {
+        ulong carry = 0;
+        for (int i = 0; i < source.Length; i++)
+        {
+            int idx = i + shift;
+            ulong sum = dest[idx] + (ulong)source[i] + carry;
+            dest[idx] = (uint)sum;
+            carry = sum >> 32;
+        }
+        int k = source.Length + shift;
+        while (carry != 0 && k < dest.Length)
+        {
+            ulong sum = dest[k] + carry;
+            dest[k] = (uint)sum;
+            carry = sum >> 32;
+            k++;
+        }
+    }
     private static uint[] Subtract(ReadOnlySpan<uint> a, ReadOnlySpan<uint> b)
     {
         var result = new uint[a.Length];
@@ -105,16 +124,23 @@ internal class KaratsubaMultiplier : IMultiplier
         return result;
     }
 
-    private static uint[] Combine(uint[] z0, uint[] z1, uint[] z2, int m)
+    private static ReadOnlySpan<uint> DeleteZeros(ReadOnlySpan<uint> span)
+    {
+        int last = span.Length - 1;
+        while (last >= 0 && span[last] == 0)
+            last--;
+        return last < 0 ? default : span.Slice(0, last + 1);
+    }
+    private static uint[] LastSum(uint[] z0, uint[] z1, uint[] z2, int m)
     {
         int totalLen = Math.Max(z0.Length, Math.Max(z1.Length + m, z2.Length + 2 * m));
         var result = new uint[totalLen];
 
         Array.Copy(z0, 0, result, 0, z0.Length);
 
-        AddShifted(result, z1, m);
+        AddWithShift(result, z1, m);
 
-        AddShifted(result, z2, 2 * m);
+        AddWithShift(result, z2, 2 * m);
 
         int last = result.Length - 1;
         while (last >= 0 && result[last] == 0)
@@ -125,31 +151,4 @@ internal class KaratsubaMultiplier : IMultiplier
         return result;
     }
 
-    private static void AddShifted(uint[] dest, uint[] source, int shift)
-    {
-        ulong carry = 0;
-        for (int i = 0; i < source.Length; i++)
-        {
-            int idx = i + shift;
-            ulong sum = dest[idx] + (ulong)source[i] + carry;
-            dest[idx] = (uint)sum;
-            carry = sum >> 32;
-        }
-        int k = source.Length + shift;
-        while (carry != 0 && k < dest.Length)
-        {
-            ulong sum = dest[k] + carry;
-            dest[k] = (uint)sum;
-            carry = sum >> 32;
-            k++;
-        }
-    }
-
-    private static ReadOnlySpan<uint> TrimLeadingZeros(ReadOnlySpan<uint> span)
-    {
-        int last = span.Length - 1;
-        while (last >= 0 && span[last] == 0)
-            last--;
-        return last < 0 ? default : span.Slice(0, last + 1);
-    }
 }

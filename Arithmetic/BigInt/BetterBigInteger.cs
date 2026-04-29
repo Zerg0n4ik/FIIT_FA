@@ -375,32 +375,23 @@ public sealed class BetterBigInteger : IBigInteger
 
     private static uint[] AddValues(uint[] a, uint[] b)
     {
-        int length = Math.Max(a.Length, b.Length);
-        var result = new List<uint>(length + 1);
+        int maxLen = Math.Max(a.Length, b.Length);
+        var result = new uint[maxLen + 1];
         ulong carry = 0;
-        for (int i = 0; i < length; i++)
+        for (int i = 0; i < maxLen; i++)
         {
             ulong sum = carry;
-            if (i < a.Length)
-            {
-                sum += a[i];
-            }
-
-            if (i < b.Length)
-            {
-                sum += b[i];
-            }
-            result.Add((uint)sum);
+            if (i < a.Length) sum += a[i];
+            if (i < b.Length) sum += b[i];
+            result[i] = (uint)sum;
             carry = sum >> 32;
         }
-
         if (carry != 0)
-        {
-            result.Add((uint)carry);
-        }
-        return result.ToArray();
+            result[maxLen] = (uint)carry;
+        else
+            Array.Resize(ref result, maxLen);
+        return result;
     }
-
 
     private static uint[] SubtractValues(uint[] a, uint[] b)
     {
@@ -408,39 +399,23 @@ public sealed class BetterBigInteger : IBigInteger
         long borrow = 0;
         for (int i = 0; i < a.Length; i++)
         {
-            long difference = a[i] - borrow;
-            if (i < b.Length)
+            long diff = a[i] - borrow;
+            if (i < b.Length) diff -= b[i];
+            if (diff < 0)
             {
-                difference -= b[i];
-            }
-
-            if (difference < 0)
-            {
-                difference += 0x100000000;
+                diff += 0x100000000;
                 borrow = 1;
             }
             else
-            {
                 borrow = 0;
-            }
-            result[i] = (uint)difference;
+            result[i] = (uint)diff;
         }
-
         int last = result.Length - 1;
         while (last >= 0 && result[last] == 0)
-        {
             last--;
-        }
-
-        if (last < 0)
-        {
-            return new uint[] { 0 };
-        }
-
+        if (last < 0) return new uint[] { 0 };
         if (last < result.Length - 1)
-        {
             Array.Resize(ref result, last + 1);
-        }
         return result;
     }
 
@@ -527,9 +502,9 @@ public sealed class BetterBigInteger : IBigInteger
             return Zero;
         }
 
-        BigInteger bia = ToSystemBigInteger(a);
-        BigInteger bib = ToSystemBigInteger(b);
-        BigInteger result = bia / bib;
+        BigInteger chi = ToSystemBigInteger(a);
+        BigInteger zna = ToSystemBigInteger(b);
+        BigInteger result = chi / zna;
         return FromSystemBigInteger(result);
     }
 
@@ -546,9 +521,9 @@ public sealed class BetterBigInteger : IBigInteger
             return Zero;
         }
 
-        BigInteger bia = ToSystemBigInteger(a);
-        BigInteger bib = ToSystemBigInteger(b);
-        BigInteger result = bia % bib;
+        BigInteger chi = ToSystemBigInteger(a);
+        BigInteger zna = ToSystemBigInteger(b);
+        BigInteger result = chi % zna;
         return FromSystemBigInteger(result);
     }
 
@@ -563,15 +538,15 @@ public sealed class BetterBigInteger : IBigInteger
         if (IsZero(a))
             return new BetterBigInteger(new uint[] { 1 }, true);
 
-        var (words, sign) = ToTwosComplement(a);
+        var (words, sign) = ToDopCode(a);
         for (int i = 0; i < words.Length; i++)
             words[i] = ~words[i];
 
-        return FromTwosComplement(words);
+        return FromDopCode(words);
     }
 
 
-    private static (uint[] words, bool isNegative) ToTwosComplement(BetterBigInteger value)
+    private static (uint[] words, bool isNegative) ToDopCode(BetterBigInteger value)
     {
         if (!value.IsNegative)
         {
@@ -616,7 +591,7 @@ public sealed class BetterBigInteger : IBigInteger
     }
 
 
-    private static BetterBigInteger FromTwosComplement(uint[] twos)
+    private static BetterBigInteger FromDopCode(uint[] twos)
     {
         if (twos.Length == 0)
         {
@@ -669,68 +644,55 @@ public sealed class BetterBigInteger : IBigInteger
     }
 
 
-    private static BetterBigInteger BitwiseOperation(BetterBigInteger a, BetterBigInteger b, char op)
+    private static BetterBigInteger BirOperations(BetterBigInteger a, BetterBigInteger b, char op)
     {
-        var (awr, asg) = ToTwosComplement(a);
-        var (bwr, bsg) = ToTwosComplement(b);
-        int max = Math.Max(awr.Length, bwr.Length);
-        var result = new uint[max];
+        var (aWords, aIsNegative) = ToDopCode(a);
+        var (bWords, bIsNegative) = ToDopCode(b);
 
-        for (int i = 0; i < max; i++)
+        int maxLength = Math.Max(aWords.Length, bWords.Length);
+        var result = new uint[maxLength];
+
+        for (int i = 0; i < maxLength; i++)
         {
-            uint wa;
-            if (i < awr.Length)
+            uint wordA;
+            if (i < aWords.Length)
             {
-                wa = awr[i];
+                wordA = aWords[i];
             }
             else
             {
-                if (asg)
-                {
-                    wa = 0xFFFFFFFF;
-                }
-                else
-                {
-                    wa = 0;
-                }
+                wordA = aIsNegative ? 0xFFFFFFFF : 0;
             }
 
-            uint wb;
-            if (i < bwr.Length)
+            uint wordB;
+            if (i < bWords.Length)
             {
-                wb = bwr[i];
+                wordB = bWords[i];
             }
             else
             {
-                if (bsg)
-                {
-                    wb = 0xFFFFFFFF;
-                }
-                else
-                {
-                    wb = 0;
-                }
+                wordB = bIsNegative ? 0xFFFFFFFF : 0;
             }
 
             result[i] = op switch
             {
-                '&' => wa & wb,
-                '|' => wa | wb,
-                '^' => wa ^ wb,
-                _ => throw new ArgumentException("Нет такой операции.")
+                '&' => wordA & wordB,
+                '|' => wordA | wordB,
+                '^' => wordA ^ wordB,
+                _ => throw new ArgumentException("Неизвестная побитовая операция.")
             };
         }
 
-        return FromTwosComplement(result);
+        return FromDopCode(result);
     }
 
 
     public static BetterBigInteger operator &(BetterBigInteger a, BetterBigInteger b)
-        => BitwiseOperation(a, b, '&');
+        => BirOperations(a, b, '&');
     public static BetterBigInteger operator |(BetterBigInteger a, BetterBigInteger b)
-        => BitwiseOperation(a, b, '|');
+        => BirOperations(a, b, '|');
     public static BetterBigInteger operator ^(BetterBigInteger a, BetterBigInteger b)
-        => BitwiseOperation(a, b, '^');
+        => BirOperations(a, b, '^');
 
     public static BetterBigInteger operator <<(BetterBigInteger a, int shift)
     {
@@ -746,7 +708,7 @@ public sealed class BetterBigInteger : IBigInteger
         if (a.IsNegative)
             return -((-a) << shift);
 
-        var (words, _) = ToTwosComplement(a);
+        var (words, _) = ToDopCode(a);
 
         int wordShift = shift / 32;
         int bitShift = shift % 32;
@@ -769,7 +731,7 @@ public sealed class BetterBigInteger : IBigInteger
             }
         }
 
-        return FromTwosComplement(result);
+        return FromDopCode(result);
     }
 
 
@@ -790,7 +752,7 @@ public sealed class BetterBigInteger : IBigInteger
             return a << -shift;
         }
 
-        var (words, sign) = ToTwosComplement(a);
+        var (words, sign) = ToDopCode(a);
         int wordShift = shift / 32;
         int bitShift = shift % 32;
 
@@ -826,7 +788,7 @@ public sealed class BetterBigInteger : IBigInteger
 
             result[i - wordShift] = (uint)value;
         }
-        return FromTwosComplement(result);
+        return FromDopCode(result);
     }
 
     public static bool operator ==(BetterBigInteger a, BetterBigInteger b) => Equals(a, b);
