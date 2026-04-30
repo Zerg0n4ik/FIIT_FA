@@ -5,49 +5,49 @@ namespace Arithmetic.BigInt.MultiplyStrategy;
 
 internal class FftMultiplier : IMultiplier
 {
-    public BetterBigInteger Multiply(BetterBigInteger a, BetterBigInteger b)
+    public BetterBigInteger Multiply(BetterBigInteger x, BetterBigInteger y)
     {
-        if (IsZero(a) || IsZero(b))
+        if (IsZero(x) || IsZero(y))
             return BetterBigInteger.Zero;
 
-        bool resultSign = a.IsNegative ^ b.IsNegative;
-        var aDigits = a.GetDigits();
-        var bDigits = b.GetDigits();
+        bool resultSign = x.IsNegative ^ y.IsNegative;
+        var digitsOfX = x.GetDigits();
+        var digitsOfY = y.GetDigits();
 
-        int aLen16 = aDigits.Length * 2;
-        int bLen16 = bDigits.Length * 2;
-        int convLen = aLen16 + bLen16 - 1;
+        int xIn16 = digitsOfX.Length * 2;
+        int yIn16 = digitsOfY.Length * 2;
+        int convLen = xIn16 + yIn16 - 1;
         int size = 1;
         while (size < convLen)
             size <<= 1;
 
-        Complex[] A = new Complex[size];
-        Complex[] B = new Complex[size];
+        Complex[] X = new Complex[size];
+        Complex[] Y = new Complex[size];
 
-        for (int i = 0; i < aDigits.Length; i++)
+        for (int i = 0; i < digitsOfX.Length; i++)
         {
-            uint d = aDigits[i];
-            A[i * 2] = new Complex(d & 0xFFFF, 0);
-            A[i * 2 + 1] = new Complex(d >> 16, 0);
+            uint d = digitsOfX[i];
+            X[i * 2] = new Complex(d & 0xFFFF, 0);
+            X[i * 2 + 1] = new Complex(d >> 16, 0);
         }
-        for (int i = 0; i < bDigits.Length; i++)
+        for (int i = 0; i < digitsOfY.Length; i++)
         {
-            uint d = bDigits[i];
-            B[i * 2] = new Complex(d & 0xFFFF, 0);
-            B[i * 2 + 1] = new Complex(d >> 16, 0);
+            uint d = digitsOfY[i];
+            Y[i * 2] = new Complex(d & 0xFFFF, 0);
+            Y[i * 2 + 1] = new Complex(d >> 16, 0);
         }
 
-        FFT(A, false);
-        FFT(B, false);
+        FFT(X, false);
+        FFT(Y, false);
         for (int i = 0; i < size; i++)
-            A[i] *= B[i];
-        FFT(A, true);
-
+            X[i] *= Y[i];
+        FFT(X, true);
+        // округление и перенос
         long carry = 0;
         var digits16 = new List<ushort>();
         for (int i = 0; i < convLen; i++)
         {
-            long val = (long)Math.Round(A[i].Real) + carry;
+            long val = (long)Math.Round(X[i].Real) + carry;
             digits16.Add((ushort)(val & 0xFFFF));
             carry = val >> 16;
         }
@@ -56,7 +56,7 @@ internal class FftMultiplier : IMultiplier
             digits16.Add((ushort)(carry & 0xFFFF));
             carry >>= 16;
         }
-
+        // обратно в 32 бита
         var digits32 = new List<uint>();
         for (int i = 0; i < digits16.Count; i += 2)
         {
@@ -74,6 +74,7 @@ internal class FftMultiplier : IMultiplier
     private static void FFT(Complex[] data, bool inverse)
     {
         int n = data.Length;
+        // инвертируем индексы
         for (int i = 1, j = 0; i < n; i++)
         {
             int bit = n >> 1;
@@ -87,7 +88,8 @@ internal class FftMultiplier : IMultiplier
         for (int len = 2; len <= n; len <<= 1)
         {
             double angle = 2 * Math.PI / len * (inverse ? -1 : 1);
-            Complex wlen = new Complex(Math.Cos(angle), Math.Sin(angle));
+            Complex wBase = new Complex(Math.Cos(angle), Math.Sin(angle));
+            // бабочка
             for (int i = 0; i < n; i += len)
             {
                 Complex w = Complex.One;
@@ -97,7 +99,7 @@ internal class FftMultiplier : IMultiplier
                     Complex v = data[i + j + len / 2] * w;
                     data[i + j] = u + v;
                     data[i + j + len / 2] = u - v;
-                    w *= wlen;
+                    w *= wBase;
                 }
             }
         }

@@ -72,7 +72,7 @@ public sealed class BetterBigInteger : IBigInteger
     {
         if (radix < 2 || radix > 36)
         {
-            throw new ArgumentException("Некорректное значение системы счисления.");
+            throw new ArgumentException("Жалко");
         }
 
         bool isNegative = false;
@@ -93,7 +93,7 @@ public sealed class BetterBigInteger : IBigInteger
 
         if (start == value.Length)
         {
-            throw new ArgumentException("Некорректное значение числа.");
+            throw new ArgumentException("Жалко");
         }
 
         while (start < value.Length && value[start] == '0')
@@ -185,12 +185,12 @@ public sealed class BetterBigInteger : IBigInteger
         }
         else
         {
-            throw new ArgumentException("Невозможно перевести строку в число.");
+            throw new ArgumentException("Невозможно перевести");
         }
 
         if (value >= radix)
         {
-            throw new ArgumentException("Некорректная система счисления.");
+            throw new ArgumentException("Некорректная СС");
         }
 
         return value;
@@ -494,7 +494,7 @@ public sealed class BetterBigInteger : IBigInteger
     {
         if (IsZero(b))
         {
-            throw new DivideByZeroException("Деление на ноль.");
+            throw new DivideByZeroException("Так нельзя");
         }
 
         if (IsZero(a))
@@ -513,7 +513,7 @@ public sealed class BetterBigInteger : IBigInteger
     {
         if (IsZero(b))
         {
-            throw new DivideByZeroException("Деление на ноль.");
+            throw new DivideByZeroException("Так нельзя");
         }
 
         if (IsZero(a))
@@ -679,7 +679,7 @@ public sealed class BetterBigInteger : IBigInteger
                 '&' => wordA & wordB,
                 '|' => wordA | wordB,
                 '^' => wordA ^ wordB,
-                _ => throw new ArgumentException("Неизвестная побитовая операция.")
+                _ => throw new ArgumentException("Нет такой операции")
             };
         }
 
@@ -832,7 +832,7 @@ public sealed class BetterBigInteger : IBigInteger
     {
         if (radix < 2 || radix > 36)
         {
-            throw new ArgumentException("Некорректная система счисления.");
+            throw new ArgumentException("Некорректная СС");
         }
 
         if (IsZero(this))

@@ -5,9 +5,6 @@ namespace Arithmetic.BigInt.MultiplyStrategy;
 internal class KaratsubaMultiplier : IMultiplier
 {
     private const int Threshold = 32;
-
-    private readonly SimpleMultiplier _simple = new();
-
     public BetterBigInteger Multiply(BetterBigInteger a, BetterBigInteger b)
     {
         if (IsZero(a) || IsZero(b))
