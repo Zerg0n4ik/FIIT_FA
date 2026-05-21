@@ -492,39 +492,97 @@ public sealed class BetterBigInteger : IBigInteger
 
     public static BetterBigInteger operator /(BetterBigInteger a, BetterBigInteger b)
     {
-        if (IsZero(b))
-        {
-            throw new DivideByZeroException("Так нельзя");
-        }
-
-        if (IsZero(a))
-        {
-            return Zero;
-        }
-
-        BigInteger chi = ToSystemBigInteger(a);
-        BigInteger zna = ToSystemBigInteger(b);
-        BigInteger result = chi / zna;
-        return FromSystemBigInteger(result);
+        if (IsZero(b)) throw new DivideByZeroException();
+        if (IsZero(a)) return Zero;
+        var (quotient, _) = DivRemMagnitude(a.GetArrayOfDigits(), b.GetArrayOfDigits());
+        bool negative = a._signBit != b._signBit;
+        return new BetterBigInteger(quotient, negative);
     }
-
 
     public static BetterBigInteger operator %(BetterBigInteger a, BetterBigInteger b)
     {
-        if (IsZero(b))
+        if (IsZero(b)) throw new DivideByZeroException();
+        if (IsZero(a)) return Zero;
+        var (_, remainder) = DivRemMagnitude(a.GetArrayOfDigits(), b.GetArrayOfDigits());
+        return new BetterBigInteger(remainder, a._signBit == 1);
+    }
+
+    private static (uint[] Quotient, uint[] Remainder) DivRemMagnitude(uint[] a, uint[] b)
+    {
+        if (b.Length == 1 && b[0] == 0) throw new DivideByZeroException();
+        if (a.Length < b.Length) return (new uint[] { 0 }, a);
+
+        uint[] quotient = new uint[a.Length - b.Length + 1];
+        uint[] remainder = new uint[a.Length];
+        Array.Copy(a, remainder, a.Length);
+
+        int shift = a.Length - b.Length;
+        for (int i = shift; i >= 0; i--)
         {
-            throw new DivideByZeroException("Так нельзя");
+            ulong qGuess;
+            int idxHigh = i + b.Length;
+            int idxLow = i + b.Length - 1;
+
+            if (remainder.Length > idxHigh && b.Length > 0 && remainder[idxHigh] == b[^1])
+            {
+                qGuess = uint.MaxValue;
+            }
+            else
+            {
+                ulong highPart = (idxHigh < remainder.Length) ? remainder[idxHigh] : 0UL;
+                ulong lowPart = (idxLow >= 0 && idxLow < remainder.Length) ? remainder[idxLow] : 0UL;
+                ulong twoDigit = (highPart << 32) | lowPart;
+                qGuess = twoDigit / b[^1];
+            }
+
+            while (true)
+            {
+                uint[] temp = MultiplyByUint(b, (uint)qGuess);
+                uint[] shiftedTemp = new uint[i + temp.Length];
+                Array.Copy(temp, 0, shiftedTemp, i, temp.Length);
+                if (CompareValue(remainder, shiftedTemp) >= 0)
+                {
+                    remainder = SubtractValues(remainder, shiftedTemp);
+                    break;
+                }
+                qGuess--;
+            }
+            quotient[i] = (uint)qGuess;
         }
 
-        if (IsZero(a))
-        {
-            return Zero;
-        }
+        quotient = Normalize(quotient, out _);
+        remainder = Normalize(remainder, out _);
+        return (quotient, remainder);
+    }
 
-        BigInteger chi = ToSystemBigInteger(a);
-        BigInteger zna = ToSystemBigInteger(b);
-        BigInteger result = chi % zna;
-        return FromSystemBigInteger(result);
+    private static uint[] MultiplyByUint(uint[] a, uint b)
+    {
+        uint[] result = new uint[a.Length + 1];
+        ulong carry = 0;
+        for (int i = 0; i < a.Length; i++)
+        {
+            ulong prod = (ulong)a[i] * b + carry;
+            result[i] = (uint)prod;
+            carry = prod >> 32;
+        }
+        result[a.Length] = (uint)carry;
+        return Normalize(result, out _);
+    }
+
+    private static uint[] Normalize(uint[] digits, out bool allZero)
+    {
+        int lastNonZero = digits.Length - 1;
+        while (lastNonZero >= 0 && digits[lastNonZero] == 0) lastNonZero--;
+        if (lastNonZero < 0)
+        {
+            allZero = true;
+            return Array.Empty<uint>();
+        }
+        allZero = false;
+        if (lastNonZero == digits.Length - 1) return digits;
+        uint[] result = new uint[lastNonZero + 1];
+        Array.Copy(digits, result, result.Length);
+        return result;
     }
 
 
